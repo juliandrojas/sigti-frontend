@@ -220,6 +220,12 @@ const peripheralLabels = {
   cooling_base: 'Base refrigerante'
 };
 
+function normalizeAreaLabel(value) {
+  const trimmed = String(value ?? '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return 'Área no definida';
+  return trimmed.toLocaleLowerCase('es-CO') === 'bienestar' ? 'Bienestar' : trimmed;
+}
+
 const dataTableLanguage = {
   emptyTable: 'No hay registros disponibles.',
   info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
@@ -374,12 +380,12 @@ function LoansOverview({ token }) {
     ...assignment,
     equipmentCode: assignment.equipment?.full_equipment_code ?? 'Sin código',
     equipmentName: [assignment.equipment?.brand, assignment.equipment?.model].filter(Boolean).join(' ') || 'Equipo no definido',
-    area: assignment.equipment?.area || 'Área no definida',
+    area: normalizeAreaLabel(assignment.equipment?.area),
     kit: assignment.items.map((item) => (peripheralLabels[item.item_type] ?? item.item_type) + ' × ' + item.quantity).join(' · '),
     deliveryDate: formatDate(assignment.delivered_at?.slice(0, 10))
   }));
   const peripheralsByArea = Object.values(assignments.reduce((areasByName, assignment) => {
-    const area = assignment.equipment?.area || 'Área no definida';
+    const area = normalizeAreaLabel(assignment.equipment?.area);
     const current = areasByName[area] ?? { area, total: 0, quantities: {} };
     for (const item of assignment.items) {
       current.total += item.quantity;

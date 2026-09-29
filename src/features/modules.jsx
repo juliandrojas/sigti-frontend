@@ -4,7 +4,7 @@ import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
-import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getUserEquipment, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
+import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, createTicket, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getTickets, getUserEquipment, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
 
 DataTable.use(DT);
 
@@ -639,6 +639,98 @@ function todayIso() {
 
 function FormField({ label, id, children, full = false }) {
   return <div className={`form-field ${full ? 'full' : ''}`}><label htmlFor={id}>{label}</label>{children}</div>;
+}
+
+const ticketStatusLabels = {
+  open: 'Abierta',
+  in_progress: 'En atención',
+  resolved: 'Resuelta',
+  closed: 'Cerrada'
+};
+
+const ticketPriorityLabels = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+  critical: 'Crítica'
+};
+
+function TicketCard({ ticket, showRequester = false }) {
+  return <article className="ticket-card">
+    <div className="ticket-card-heading"><strong>{ticket.title}</strong><span className={`ticket-status ticket-status-${ticket.status}`}>{ticketStatusLabels[ticket.status] ?? ticket.status}</span></div>
+    {showRequester && <small className="ticket-requester">Solicitante: {ticket.requester_name}</small>}
+    {ticket.description && <p>{ticket.description}</p>}
+    <div className="ticket-card-meta"><span>Prioridad {ticketPriorityLabels[ticket.priority] ?? ticket.priority}</span><span>{formatDate(ticket.created_at?.slice(0, 10))}</span></div>
+  </article>;
+}
+
+export function RequestForm({ token, onNavigate }) {
+  const [title, setTitle] = useState('Cambio de mouse');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState('medium');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      await createTicket(token, { title, description, priority });
+      setDescription('');
+      setSuccess('Solicitud registrada. El área de Sistemas revisará tu caso.');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <section className="maintenance-card request-page" aria-labelledby="request-title">
+    <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="request-title">Hacer una solicitud</h1><p>Reporta una novedad sin desplazarte al área de Sistemas.</p></div><button className="secondary-button" type="button" onClick={() => onNavigate('/empleados/solicitudes')}>Ver mis solicitudes</button></div>
+    <form className="record-form request-form" onSubmit={submit}>
+      <FormField label="Tipo de solicitud" id="ticketTitle"><select id="ticketTitle" value={title} onChange={(event) => setTitle(event.target.value)}><option>Cambio de mouse</option><option>Cambio de teclado</option><option>Cambio de cargador</option><option>Falla de equipo</option><option>Otra solicitud</option></select></FormField>
+      <FormField label="Prioridad" id="ticketPriority"><select id="ticketPriority" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></FormField>
+      <FormField label="Descripción o detalle" id="ticketDescription" full><textarea id="ticketDescription" value={description} onChange={(event) => setDescription(event.target.value)} rows="5" placeholder="Cuéntanos qué ocurrió, desde cuándo y dónde se encuentra el equipo." /></FormField>
+      <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Registrando…' : 'Enviar solicitud'}</button>{success && <p className="success-message" role="status">{success}</p>}{error && <p className="error" role="alert">{error}</p>}</div>
+    </form>
+  </section>;
+}
+
+export function UserRequests({ token }) {
+  const [tickets, setTickets] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
+  }, [token]);
+
+  return <section className="maintenance-card request-page" aria-labelledby="my-requests-title">
+    <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="my-requests-title">Mis solicitudes</h1><p>Consulta el estado de tus reportes al área de Sistemas.</p></div></div>
+    {error && <p className="error" role="alert">{error}</p>}
+    {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
+    {tickets?.length === 0 && <p className="muted">Aún no has registrado solicitudes.</p>}
+    {tickets?.length > 0 && <div className="ticket-list">{tickets.map((ticket) => <TicketCard ticket={ticket} key={ticket.id} />)}</div>}
+  </section>;
+}
+
+export function RequestsOverview({ token }) {
+  const [tickets, setTickets] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
+  }, [token]);
+
+  return <section className="maintenance-card request-page" aria-labelledby="requests-title">
+    <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="requests-title">Solicitudes recibidas</h1><p>Seguimiento de los reportes enviados por los empleados.</p></div></div>
+    {error && <p className="error" role="alert">{error}</p>}
+    {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
+    {tickets?.length === 0 && <p className="muted">No hay solicitudes registradas.</p>}
+    {tickets?.length > 0 && <div className="ticket-list">{tickets.map((ticket) => <TicketCard ticket={ticket} showRequester key={ticket.id} />)}</div>}
+  </section>;
 }
 
 function EmployeesSection({ token, user }) {

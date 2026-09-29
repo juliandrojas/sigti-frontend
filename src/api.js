@@ -49,6 +49,29 @@ export async function getUserEquipment(token, userId) {
   return body;
 }
 
+export async function getTickets(token) {
+  const response = await safeFetch(`${API_URL}/tickets`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible cargar las solicitudes.');
+  return body.tickets;
+}
+
+export async function createTicket(token, data) {
+  const response = await safeFetch(`${API_URL}/tickets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible registrar la solicitud.');
+  return body.ticket;
+}
+
 export async function getSystemMetrics(token) {
   const response = await safeFetch(`${API_URL}/dashboard/systems`, {
     headers: { Authorization: `Bearer ${token}` }

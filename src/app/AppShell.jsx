@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { login } from '../api.js';
-import { EmployeeDashboard, InventoryOverview, LoansOverview, MaintenanceRecordsOverview, SystemDashboard, SystemMetrics } from '../features/modules.jsx';
+import { EmployeeDashboard, InventoryOverview, LoansOverview, MaintenanceRecordsOverview, RequestForm, RequestsOverview, SystemDashboard, SystemMetrics, UserRequests } from '../features/modules.jsx';
 
 export function LoginForm({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -48,9 +48,11 @@ export function RoleSection({ user, token, path, onLogout, onNavigate }) {
   return <>
     <Navigation isSystems={isSystems} path={path} onLogout={onLogout} onNavigate={onNavigate} />
     <main className="dashboard">
-      {path === '/sistemas/inicio'
-        ? isSystems ? <SystemDashboard token={token} user={user} /> : <EmployeeDashboard token={token} user={user} />
-        : isSystems ? <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} /> : <EmployeeDashboard token={token} user={user} />}
+      {isSystems
+        ? path === '/sistemas/inicio' ? <SystemDashboard token={token} user={user} /> : <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} />
+        : path === '/empleados/solicitud' ? <RequestForm token={token} user={user} onNavigate={onNavigate} />
+          : path === '/empleados/solicitudes' ? <UserRequests token={token} />
+            : <EmployeeDashboard token={token} user={user} />}
     </main>
   </>;
 }
@@ -58,8 +60,8 @@ export function RoleSection({ user, token, path, onLogout, onNavigate }) {
 export function Navigation({ isSystems, path, onLogout, onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const links = isSystems
-    ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
-    : [['➤', 'Hacer una solicitud', '/empleados/inicio'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
+    ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚑', 'Solicitudes', '/sistemas/solicitudes'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
+    : [['➤', 'Hacer una solicitud', '/empleados/solicitud'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
 
   function navigate(href) {
     setMenuOpen(false);
@@ -91,5 +93,6 @@ export function SystemsSection({ token, user, path, onNavigate }) {
   if (path === '/sistemas/inventario') return <InventoryOverview token={token} onNavigate={onNavigate} />;
   if (path === '/sistemas/mantenimiento') return <MaintenanceRecordsOverview token={token} onNavigate={onNavigate} />;
   if (path === '/sistemas/prestamos') return <LoansOverview token={token} />;
+  if (path === '/sistemas/solicitudes') return <RequestsOverview token={token} />;
   return <SystemMetrics token={token} />;
 }

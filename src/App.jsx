@@ -767,6 +767,7 @@ function MaintenanceForm({ token, maintenanceId, onNavigate, modal = false, onCl
         setSavedEquipment({
           code: result.maintenance.full_equipment_code,
           baseCode: result.maintenance.equipment_code,
+          responsible: result.maintenance.responsible || form.responsible,
           nextMaintenance: formatDate(result.record.next_maintenance_date),
           title: 'Equipo guardado correctamente'
         });
@@ -809,6 +810,7 @@ function MaintenanceForm({ token, maintenanceId, onNavigate, modal = false, onCl
         <p className="eyebrow">REGISTRO COMPLETADO</p>
         <h2 id="saved-equipment-title">{savedEquipment.title}</h2>
         <div className="saved-equipment-details">
+          <div><span>Asignado a</span><strong>{savedEquipment.responsible}</strong></div>
           <div><span>Código EF</span><strong>{savedEquipment.baseCode}</strong></div>
           <div><span>Código completo</span><strong>{savedEquipment.code}</strong></div>
           <div><span>Próximo mantenimiento</span><strong>{savedEquipment.nextMaintenance}</strong></div>

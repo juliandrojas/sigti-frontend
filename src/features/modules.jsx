@@ -457,10 +457,7 @@ function WelcomeBanner({ user, title }) {
 }
 
 export function EmployeeDashboard({ token, user }) {
-  return <>
-    <WelcomeBanner user={user} title="Sistema Integrado de Gestión de Tecnologías de la Información" />
-    <EmployeesSection token={token} user={user} />
-  </>;
+  return <EmployeesSection token={token} user={user} />;
 }
 
 export function SystemDashboard({ token, user }) {
@@ -654,13 +651,8 @@ function EmployeesSection({ token, user }) {
       .catch((requestError) => setError(requestError.message));
   }, [token, user.id]);
 
-  return <section className="employee-services" aria-label="Servicios para empleados">
-    <div className="cards">
-      <article><h3>Mis solicitudes</h3><p>Crea y consulta tus tickets de soporte.</p></article>
-      <article><h3>Mis equipos</h3><p>Consulta los activos de TI asignados a ti.</p></article>
-    </div>
-    <section className="history-card employee-equipment-card" aria-labelledby="my-equipment-title">
-      <div className="section-heading"><div><p className="eyebrow">ACTIVOS ASIGNADOS</p><h2 id="my-equipment-title">Mis equipos</h2></div></div>
+  return <section className="history-card employee-equipment-card" aria-labelledby="my-equipment-title">
+      <div className="section-heading"><div><p className="eyebrow">INVENTARIO PERSONAL</p><h1 id="my-equipment-title">Activos asignados</h1><p>Equipos y periféricos registrados a tu nombre.</p></div></div>
       {error && <p className="error" role="alert">{error}</p>}
       {!equipmentData && !error && <p className="muted">Consultando tus equipos asignados…</p>}
       {equipmentData && equipmentData.equipment.length === 0 && equipmentData.assignments.length === 0 && <p className="muted">No tienes equipos o periféricos asignados actualmente.</p>}
@@ -674,8 +666,6 @@ function EmployeesSection({ token, user }) {
         <p>{assignment.equipment?.full_equipment_code ?? 'Equipo asociado no encontrado'}</p>
         <small>{assignment.items.map((item) => `${peripheralLabels[item.item_type] ?? item.item_type} × ${item.quantity}`).join(' · ')}</small>
       </article>)}
-    </section>
   </section>;
 }
-
 

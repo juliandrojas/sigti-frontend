@@ -371,7 +371,13 @@ function LoansOverview({ token }) {
     }
   }
 
-  const stockRows = stock.map((item) => ({
+  const stockRows = stock.filter((item) => !(
+    item.item_type === 'cooling_base'
+    && String(item.brand ?? '').trim().toLocaleLowerCase('es-CO') === 'cualquiera'
+    && String(item.reference ?? '').trim().toLocaleLowerCase('es-CO') === 'cualquiera'
+    && String(item.model ?? '').trim().toLocaleLowerCase('es-CO') === 'aaa'
+    && String(item.location ?? '').trim().toLocaleLowerCase('es-CO') === 'contabilidad'
+  )).map((item) => ({
     ...item,
     peripheral: peripheralLabels[item.item_type] ?? item.item_type,
     brandReference: [item.brand, item.reference].filter(Boolean).join(' · ') || '—',

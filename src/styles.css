@@ -200,3 +200,6 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .employee-equipment-list article span,.employee-equipment-list article small,.employee-assignment span,.employee-assignment small { color: #61708c; }
 .employee-equipment-list article p,.employee-assignment p { margin: .45rem 0; }
 .employee-assignment { margin-top: .75rem; background: #eef7fc; }
+.employee-peripherals { margin-top: .8rem; }
+.employee-peripherals span { padding: .45rem .65rem; border: 1px solid #cce1ec; border-radius: 999px; background: #eef7fc; color: #0d5f88; font-size: .88rem; font-weight: 650; }
+.employee-no-peripherals { display: block; margin-top: .8rem; }

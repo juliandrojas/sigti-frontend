@@ -660,6 +660,7 @@ function EmployeesSection({ token, user }) {
         <div><strong>{item.full_equipment_code ?? item.equipment_code}</strong><span>{item.equipment_type}</span></div>
         <p>{item.brand} {item.model} · Serial {item.serial_number}</p>
         <small>{item.company} · {item.site_name ?? 'Sede no definida'} · Área {item.area}</small>
+        {item.peripherals?.filter((peripheral) => peripheral.quantity > 0).length > 0 ? <div className="assigned-peripherals employee-peripherals" aria-label="Periféricos asignados">{item.peripherals.filter((peripheral) => peripheral.quantity > 0).map((peripheral) => <span key={peripheral.id}>{peripheralLabels[peripheral.item_type] ?? peripheral.item_type} × {peripheral.quantity}</span>)}</div> : <small className="employee-no-peripherals">Sin periféricos registrados.</small>}
       </article>)}</div>}
       {equipmentData?.assignments.map((assignment) => <article className="employee-assignment" key={`assignment-${assignment.id}`}>
         <div><strong>Kit de periféricos</strong><span>Entregado {formatDate(assignment.delivered_at?.slice(0, 10))}</span></div>
@@ -668,4 +669,3 @@ function EmployeesSection({ token, user }) {
       </article>)}
   </section>;
 }
-

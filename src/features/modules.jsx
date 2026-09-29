@@ -4,214 +4,9 @@ import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
-import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, getActiveAssignments, getAssignmentOptions, getCurrentUser, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getUsers, login, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from './api.js';
+import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
 
 DataTable.use(DT);
-
-const SESSION_KEY = 'sigti.session';
-const LOGIN_PATH = '/login';
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
-
-export default function App() {
-  const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [checking, setChecking] = useState(false);
-  const [path, setPath] = useState(() => window.location.pathname || LOGIN_PATH);
-
-  useEffect(() => {
-    if (!session) return;
-    getCurrentUser(session.token)
-      .then((user) => setSession((current) => ({ ...current, user })))
-      .catch(() => {
-        localStorage.removeItem(SESSION_KEY);
-        setSession(null);
-      })
-      .finally(() => setChecking(false));
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  useEffect(() => {
-    if (session || path === LOGIN_PATH) return;
-    window.history.replaceState({}, '', LOGIN_PATH);
-    setPath(LOGIN_PATH);
-  }, [path, session]);
-
-  useEffect(() => {
-    if (!session) return;
-    const isSystems = String(session.user.role).toUpperCase() === 'SISTEMAS';
-    const prefix = isSystems ? '/sistemas/' : '/empleados/';
-    const destination = isSystems ? '/sistemas/inicio' : '/empleados/solicitud';
-    if (!path.startsWith(prefix)) {
-      window.history.replaceState({}, '', destination);
-      setPath(destination);
-    }
-  }, [path, session]);
-
-  useEffect(() => {
-    if (!session) return;
-
-    let timeoutId = window.setTimeout(expireSession, INACTIVITY_TIMEOUT_MS);
-    let activityThrottleId = null;
-
-    function scheduleExpiration() {
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(expireSession, INACTIVITY_TIMEOUT_MS);
-    }
-
-    function onActivity() {
-      if (activityThrottleId !== null) return;
-      activityThrottleId = window.setTimeout(() => {
-        activityThrottleId = null;
-        scheduleExpiration();
-      }, 1000);
-    }
-
-    function expireSession() {
-      localStorage.removeItem(SESSION_KEY);
-      window.history.replaceState({}, '', LOGIN_PATH);
-      setPath(LOGIN_PATH);
-      setSession(null);
-    }
-
-    const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
-    activityEvents.forEach((eventName) => window.addEventListener(eventName, onActivity, { passive: true }));
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      if (activityThrottleId !== null) window.clearTimeout(activityThrottleId);
-      activityEvents.forEach((eventName) => window.removeEventListener(eventName, onActivity));
-    };
-  }, [session]);
-
-  function handleLogin(nextSession) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
-    const isSystems = String(nextSession.user.role).toUpperCase() === 'SISTEMAS';
-    const destination = isSystems ? '/sistemas/inicio' : '/empleados/solicitud';
-    window.history.replaceState({}, '', destination);
-    setPath(destination);
-    setSession(nextSession);
-  }
-
-  function navigate(nextPath) {
-    const nextUrl = new URL(nextPath, window.location.origin);
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-    const normalizedNextUrl = `${nextUrl.pathname}${nextUrl.search}`;
-    if (normalizedNextUrl === currentUrl) return;
-    window.history.pushState({}, '', normalizedNextUrl);
-    setPath(nextUrl.pathname);
-  }
-
-  function handleLogout() {
-    localStorage.removeItem(SESSION_KEY);
-    window.history.replaceState({}, '', LOGIN_PATH);
-    setPath(LOGIN_PATH);
-    setSession(null);
-  }
-
-  if (checking) return <main className="loading">Validando sesión…</main>;
-  return session
-    ? <RoleSection user={session.user} token={session.token} path={path} onLogout={handleLogout} onNavigate={navigate} />
-    : <LoginForm onLogin={handleLogin} />;
-}
-
-function LoginForm({ onLogin }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function submit(event) {
-    event.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      onLogin(await login({ username, password }));
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return <main className="auth-layout">
-    <section className="brand-panel">
-      <p className="eyebrow">PETROCASINOS S.A.</p>
-      <h1>SIGTI</h1>
-      <p>Sistema Integrado de Gestión de Tecnologías de la Información</p>
-    </section>
-    <section className="login-panel" aria-labelledby="login-title">
-      <form onSubmit={submit} className="login-form">
-        <p className="eyebrow">ACCESO SEGURO</p>
-        <h2 id="login-title">Bienvenido de nuevo</h2>
-        <p className="muted">Ingresa con tu cuenta corporativa.</p>
-        <label htmlFor="username">Nombre de usuario</label>
-        <input id="username" type="text" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required />
-        <label htmlFor="password">Contraseña</label>
-        <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
-        {error && <p className="error" role="alert">{error}</p>}
-        <button type="submit" disabled={loading}>{loading ? 'Ingresando…' : 'Iniciar sesión'}</button>
-      </form>
-    </section>
-  </main>;
-}
-
-function RoleSection({ user, token, path, onLogout, onNavigate }) {
-  const isSystems = String(user.role).toUpperCase() === 'SISTEMAS';
-  return <>
-    <Navigation isSystems={isSystems} path={path} onLogout={onLogout} onNavigate={onNavigate} />
-    <main className="dashboard">
-      {path === '/sistemas/inicio'
-        ? isSystems ? <SystemDashboard token={token} user={user} /> : <EmployeeDashboard user={user} />
-        : isSystems ? <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} /> : <EmployeeDashboard user={user} />}
-    </main>
-  </>;
-}
-
-function Navigation({ isSystems, path, onLogout, onNavigate }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const links = isSystems
-    ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
-    : [['➤', 'Hacer una solicitud', '/empleados/solicitud'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
-
-  function navigate(href) {
-    setMenuOpen(false);
-    onNavigate(href);
-  }
-
-  return <nav className="topbar" aria-label="Navegación principal">
-    <div className="topbar-content">
-      <a className="brand" href={isSystems ? '/sistemas/inicio' : '/empleados/solicitud'} onClick={(event) => { event.preventDefault(); navigate(isSystems ? '/sistemas/inicio' : '/empleados/solicitud'); }} aria-label="Ir al inicio de SIGTI">
-        <img className="brand-mark" src="/petrocasinos-logo.png" alt="Logo Petrocasinos" /><span>PETRO-SIGTI</span>
-      </a>
-      <button className="nav-toggle" type="button" aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}>
-        <span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
-        <span className="sr-only">{menuOpen ? 'Cerrar menú' : 'Abrir menú'}</span>
-      </button>
-      <div id="primary-navigation" className={`nav-menu ${menuOpen ? 'open' : ''}`}>
-        <div className="nav-links">
-          {links.map(([icon, label, href]) => { const active = href === '/sistemas/mantenimiento' ? path.startsWith('/sistemas/mantenimiento') : href === '/sistemas/inventario' ? path.startsWith('/sistemas/inventario') : path === href; return <a className={`nav-link ${active ? 'active' : ''}`} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }} aria-current={active ? 'page' : undefined} key={label}><span aria-hidden="true">{icon}</span>{label}</a>; })}
-        </div>
-        <div className="nav-actions"><button className="logout" type="button" onClick={() => { setMenuOpen(false); onLogout(); }}>⇥ Cerrar sesión</button></div>
-      </div>
-    </div>
-  </nav>;
-}
-
-function SystemsSection({ token, user, path, onNavigate }) {
-  if (path === '/sistemas/inventario/nuevo') return <InventoryOverview token={token} onNavigate={onNavigate} openRegister />;
-  if (path === '/sistemas/inventario/editar') return <InventoryOverview token={token} onNavigate={onNavigate} initialEditId={new URLSearchParams(window.location.search).get('id')} />;
-  if (path === '/sistemas/inventario') return <InventoryOverview token={token} onNavigate={onNavigate} />;
-  if (path === '/sistemas/mantenimiento') return <MaintenanceRecordsOverview token={token} onNavigate={onNavigate} />;
-  if (path === '/sistemas/prestamos') return <LoansOverview token={token} />;
-  return <SystemMetrics token={token} />;
-}
 
 const peripheralLabels = {
   mouse: 'Mouse',
@@ -259,7 +54,7 @@ function SigtiDataTable({ data, columns, slots, children, className = '' }) {
   >{children}</DataTable></div>;
 }
 
-function LoansOverview({ token }) {
+export function LoansOverview({ token }) {
   const [stock, setStock] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [search, setSearch] = useState('');
@@ -472,7 +267,7 @@ function EquipmentPeripheralRegistration({ token, equipment, currentCounts, onCl
   </div>;
 }
 
-function InventoryOverview({ token, onNavigate, openRegister = false, initialEditId = null }) {
+export function InventoryOverview({ token, onNavigate, openRegister = false, initialEditId = null }) {
   const [maintenances, setMaintenances] = useState([]);
   const [selected, setSelected] = useState(null);
   const [history, setHistory] = useState([]);
@@ -565,7 +360,7 @@ function InventoryOverview({ token, onNavigate, openRegister = false, initialEdi
   </section>;
 }
 
-function MaintenanceRecordsOverview({ token, onNavigate }) {
+export function MaintenanceRecordsOverview({ token, onNavigate }) {
   const [records, setRecords] = useState([]);
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -636,7 +431,7 @@ function MaintenanceRecordsOverview({ token, onNavigate }) {
   </section>;
 }
 
-function SystemMetrics({ token }) {
+export function SystemMetrics({ token }) {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState('');
 
@@ -661,14 +456,14 @@ function WelcomeBanner({ user, title }) {
   return <section className="welcome dashboard-welcome"><p>Bienvenido(a) {user.name}</p><h1>{title}</h1><span>{user.role}</span></section>;
 }
 
-function EmployeeDashboard({ user }) {
+export function EmployeeDashboard({ user }) {
   return <>
     <WelcomeBanner user={user} title="Sistema Integrado de Gestión de Tecnologías de la Información" />
     <EmployeesSection />
   </>;
 }
 
-function SystemDashboard({ token, user }) {
+export function SystemDashboard({ token, user }) {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState('');
 
@@ -855,3 +650,6 @@ function EmployeesSection() {
     <article><h3>Mis equipos</h3><p>Consulta los activos de TI asignados a ti.</p></article>
   </section>;
 }
+
+
+

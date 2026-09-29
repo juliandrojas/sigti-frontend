@@ -40,6 +40,15 @@ export async function getUsers(token) {
   return body.users;
 }
 
+export async function getUserEquipment(token, userId) {
+  const response = await safeFetch(`${API_URL}/users/${encodeURIComponent(userId)}/equipment`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible cargar los equipos asignados.');
+  return body;
+}
+
 export async function getSystemMetrics(token) {
   const response = await safeFetch(`${API_URL}/dashboard/systems`, {
     headers: { Authorization: `Bearer ${token}` }

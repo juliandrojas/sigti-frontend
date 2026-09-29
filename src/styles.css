@@ -192,3 +192,11 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
   .auth-layout .login-panel { padding: 1rem .75rem 2rem; }
   .auth-layout .login-form { padding: 1.25rem; }
 }
+.employee-services { display: grid; gap: 1rem; }
+.employee-equipment-card { margin-top: 0; }
+.employee-equipment-list { display: grid; gap: .75rem; }
+.employee-equipment-list article,.employee-assignment { padding: 1rem; border: 1px solid #e3e8ef; border-radius: .75rem; background: #f8fafc; }
+.employee-equipment-list article > div,.employee-assignment > div { display: flex; justify-content: space-between; gap: 1rem; }
+.employee-equipment-list article span,.employee-equipment-list article small,.employee-assignment span,.employee-assignment small { color: #61708c; }
+.employee-equipment-list article p,.employee-assignment p { margin: .45rem 0; }
+.employee-assignment { margin-top: .75rem; background: #eef7fc; }

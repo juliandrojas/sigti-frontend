@@ -4,7 +4,7 @@ import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
-import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
+import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getUserEquipment, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
 
 DataTable.use(DT);
 
@@ -456,10 +456,10 @@ function WelcomeBanner({ user, title }) {
   return <section className="welcome dashboard-welcome"><p>Bienvenido(a) {user.name}</p><h1>{title}</h1><span>{user.role}</span></section>;
 }
 
-export function EmployeeDashboard({ user }) {
+export function EmployeeDashboard({ token, user }) {
   return <>
     <WelcomeBanner user={user} title="Sistema Integrado de Gestión de Tecnologías de la Información" />
-    <EmployeesSection />
+    <EmployeesSection token={token} user={user} />
   </>;
 }
 
@@ -644,12 +644,38 @@ function FormField({ label, id, children, full = false }) {
   return <div className={`form-field ${full ? 'full' : ''}`}><label htmlFor={id}>{label}</label>{children}</div>;
 }
 
-function EmployeesSection() {
-  return <section className="cards" aria-label="Servicios para empleados">
-    <article><h3>Mis solicitudes</h3><p>Crea y consulta tus tickets de soporte.</p></article>
-    <article><h3>Mis equipos</h3><p>Consulta los activos de TI asignados a ti.</p></article>
+function EmployeesSection({ token, user }) {
+  const [equipmentData, setEquipmentData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getUserEquipment(token, user.id)
+      .then(setEquipmentData)
+      .catch((requestError) => setError(requestError.message));
+  }, [token, user.id]);
+
+  return <section className="employee-services" aria-label="Servicios para empleados">
+    <div className="cards">
+      <article><h3>Mis solicitudes</h3><p>Crea y consulta tus tickets de soporte.</p></article>
+      <article><h3>Mis equipos</h3><p>Consulta los activos de TI asignados a ti.</p></article>
+    </div>
+    <section className="history-card employee-equipment-card" aria-labelledby="my-equipment-title">
+      <div className="section-heading"><div><p className="eyebrow">ACTIVOS ASIGNADOS</p><h2 id="my-equipment-title">Mis equipos</h2></div></div>
+      {error && <p className="error" role="alert">{error}</p>}
+      {!equipmentData && !error && <p className="muted">Consultando tus equipos asignados…</p>}
+      {equipmentData && equipmentData.equipment.length === 0 && equipmentData.assignments.length === 0 && <p className="muted">No tienes equipos o periféricos asignados actualmente.</p>}
+      {equipmentData?.equipment.length > 0 && <div className="employee-equipment-list">{equipmentData.equipment.map((item) => <article key={item.id}>
+        <div><strong>{item.full_equipment_code ?? item.equipment_code}</strong><span>{item.equipment_type}</span></div>
+        <p>{item.brand} {item.model} · Serial {item.serial_number}</p>
+        <small>{item.company} · {item.site_name ?? 'Sede no definida'} · Área {item.area}</small>
+      </article>)}</div>}
+      {equipmentData?.assignments.map((assignment) => <article className="employee-assignment" key={`assignment-${assignment.id}`}>
+        <div><strong>Kit de periféricos</strong><span>Entregado {formatDate(assignment.delivered_at?.slice(0, 10))}</span></div>
+        <p>{assignment.equipment?.full_equipment_code ?? 'Equipo asociado no encontrado'}</p>
+        <small>{assignment.items.map((item) => `${peripheralLabels[item.item_type] ?? item.item_type} × ${item.quantity}`).join(' · ')}</small>
+      </article>)}
+    </section>
   </section>;
 }
-
 
 

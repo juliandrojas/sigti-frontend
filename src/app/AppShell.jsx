@@ -49,8 +49,8 @@ export function RoleSection({ user, token, path, onLogout, onNavigate }) {
     <Navigation isSystems={isSystems} path={path} onLogout={onLogout} onNavigate={onNavigate} />
     <main className="dashboard">
       {path === '/sistemas/inicio'
-        ? isSystems ? <SystemDashboard token={token} user={user} /> : <EmployeeDashboard user={user} />
-        : isSystems ? <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} /> : <EmployeeDashboard user={user} />}
+        ? isSystems ? <SystemDashboard token={token} user={user} /> : <EmployeeDashboard token={token} user={user} />
+        : isSystems ? <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} /> : <EmployeeDashboard token={token} user={user} />}
     </main>
   </>;
 }
@@ -93,5 +93,4 @@ export function SystemsSection({ token, user, path, onNavigate }) {
   if (path === '/sistemas/prestamos') return <LoansOverview token={token} />;
   return <SystemMetrics token={token} />;
 }
-
 

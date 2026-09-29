@@ -59,7 +59,7 @@ export function Navigation({ isSystems, path, onLogout, onNavigate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const links = isSystems
     ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
-    : [['➤', 'Hacer una solicitud', '/empleados/solicitud'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
+    : [['➤', 'Hacer una solicitud', '/empleados/inicio'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
 
   function navigate(href) {
     setMenuOpen(false);
@@ -68,7 +68,7 @@ export function Navigation({ isSystems, path, onLogout, onNavigate }) {
 
   return <nav className="topbar" aria-label="Navegación principal">
     <div className="topbar-content">
-      <a className="brand" href={isSystems ? '/sistemas/inicio' : '/empleados/solicitud'} onClick={(event) => { event.preventDefault(); navigate(isSystems ? '/sistemas/inicio' : '/empleados/solicitud'); }} aria-label="Ir al inicio de SIGTI">
+      <a className="brand" href={isSystems ? '/sistemas/inicio' : '/empleados/inicio'} onClick={(event) => { event.preventDefault(); navigate(isSystems ? '/sistemas/inicio' : '/empleados/inicio'); }} aria-label="Ir al inicio de SIGTI">
         <img className="brand-mark" src="/petrocasinos-logo.png" alt="Logo Petrocasinos" /><span>PETRO-SIGTI</span>
       </a>
       <button className="nav-toggle" type="button" aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen((open) => !open)}>

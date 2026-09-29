@@ -41,7 +41,7 @@ export default function App() {
     if (!session) return;
     const isSystems = String(session.user.role).toUpperCase() === 'SISTEMAS';
     const prefix = isSystems ? '/sistemas/' : '/empleados/';
-    const destination = isSystems ? '/sistemas/inicio' : '/empleados/solicitud';
+    const destination = isSystems ? '/sistemas/inicio' : '/empleados/inicio';
     if (!path.startsWith(prefix)) {
       window.history.replaceState({}, '', destination);
       setPath(destination);
@@ -81,7 +81,7 @@ export default function App() {
   function handleLogin(nextSession) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
     const isSystems = String(nextSession.user.role).toUpperCase() === 'SISTEMAS';
-    const destination = isSystems ? '/sistemas/inicio' : '/empleados/solicitud';
+    const destination = isSystems ? '/sistemas/inicio' : '/empleados/inicio';
     window.history.replaceState({}, '', destination);
     setPath(destination);
     setSession(nextSession);

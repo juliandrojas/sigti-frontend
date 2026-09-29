@@ -673,7 +673,7 @@ function SystemDashboard({ token, user }) {
   </>;
 }
 
-const areas = ['Activos Fijos', 'Calidad', 'Campos', 'Compras', 'Contabilidad', 'Gerencia', 'Gerencia Administrativa Y Financiera', 'Juridica', 'Mantenimiento', 'Mercadeo', 'Nomina', 'Operaciones', 'Rrhh', 'Salud Ocupacional', 'Sena', 'Sistemas'];
+const areas = ['Activos Fijos', 'Bienestar', 'Calidad', 'Campos', 'Compras', 'Contabilidad', 'Gerencia', 'Gerencia Administrativa Y Financiera', 'Juridica', 'Mantenimiento', 'Mercadeo', 'Nomina', 'Operaciones', 'Rrhh', 'Salud Ocupacional', 'Sena', 'Sistemas'];
 const ramOptions = ['4 GB', '8 GB', '12 GB', '16 GB', '32 GB', '64 GB'];
 const operatingSystems = ['WIN 10 Pro', 'WIN 10 Single Lenguaje', 'WIN 11 Pro', 'WIN 7 Pro', 'WIN 8.1 Single Lenguaje', 'MacOS', 'WIN 11 Single Lenguaje', 'WIN 11 Pro For Workstations'];
 const storageOptions = ['No aplica', '128 GB', '250 GB', '500 GB', '1 TB', '2 TB'];

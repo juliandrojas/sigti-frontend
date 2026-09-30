@@ -12,8 +12,18 @@ const peripheralLabels = {
   mouse: 'Mouse',
   keyboard: 'Teclado',
   charge: 'Cargador',
-  cooling_base: 'Base refrigerante'
+  cooling_base: 'Base refrigerante',
+  mouse_pad: 'Pad mouse'
 };
+
+const stockPeripheralLabels = {
+  mouse: peripheralLabels.mouse,
+  keyboard: peripheralLabels.keyboard,
+  charge: peripheralLabels.charge,
+  cooling_base: peripheralLabels.cooling_base
+};
+
+const physicalPeripheralLabels = { ...peripheralLabels };
 
 function normalizeAreaLabel(value) {
   const trimmed = String(value ?? '').trim().replace(/\s+/g, ' ');
@@ -217,12 +227,12 @@ function EquipmentPeripheralRegistration({ token, equipment, currentCounts, onCl
   const equipmentType = String(equipment.equipment_type ?? '').trim();
   const isPortable = equipmentType === 'Portátil';
   const hasCharger = isPortable || equipmentType === 'Todo en Uno';
-  const [form, setForm] = useState({ mouse: 0, keyboard: 0, charge: 0, cooling_base: 0, notes: '' });
+  const [form, setForm] = useState({ mouse: 0, keyboard: 0, charge: 0, cooling_base: 0, mouse_pad: 0, notes: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const next = { mouse: 0, keyboard: 0, charge: 0, cooling_base: 0, notes: '' };
+    const next = { mouse: 0, keyboard: 0, charge: 0, cooling_base: 0, mouse_pad: 0, notes: '' };
     for (const item of currentCounts ?? []) {
       if (item.item_type !== 'charge' || hasCharger) next[item.item_type] = item.quantity;
     }
@@ -236,7 +246,7 @@ function EquipmentPeripheralRegistration({ token, equipment, currentCounts, onCl
     setError('');
     try {
       await saveEquipmentPeripheralCounts(token, equipment.id, {
-        items: Object.keys(peripheralLabels).map((itemType) => ({ itemType, quantity: itemType === 'charge' && !hasCharger ? 0 : itemType === 'cooling_base' && !isPortable ? 0 : Number(form[itemType]) || 0 })),
+        items: Object.keys(physicalPeripheralLabels).map((itemType) => ({ itemType, quantity: itemType === 'charge' && !hasCharger ? 0 : itemType === 'cooling_base' && !isPortable ? 0 : Number(form[itemType]) || 0 })),
         notes: form.notes
       });
       onSaved();
@@ -257,7 +267,7 @@ function EquipmentPeripheralRegistration({ token, equipment, currentCounts, onCl
       <form className="record-form" onSubmit={savePhysicalCount}>
         <div className="record-form-grid">
           <div className="kit-status"><strong>Equipo</strong><span>{equipment.full_equipment_code ?? equipment.equipment_code}</span><strong>Área</strong><span>{equipment.area || 'No definida'}</span></div>
-          {Object.entries(peripheralLabels).filter(([itemType]) => (itemType !== 'charge' || hasCharger) && (itemType !== 'cooling_base' || isPortable)).map(([itemType, label]) => <FormField key={itemType} label={label} id={'physical-' + itemType}><input id={'physical-' + itemType} type="number" min="0" value={form[itemType]} onChange={(event) => setForm((current) => ({ ...current, [itemType]: event.target.value }))} /></FormField>)}
+          {Object.entries(physicalPeripheralLabels).filter(([itemType]) => (itemType !== 'charge' || hasCharger) && (itemType !== 'cooling_base' || isPortable)).map(([itemType, label]) => <FormField key={itemType} label={label} id={'physical-' + itemType}><input id={'physical-' + itemType} type="number" min="0" value={form[itemType]} onChange={(event) => setForm((current) => ({ ...current, [itemType]: event.target.value }))} /></FormField>)}
           <FormField label="Observaciones del puesto" id="physicalNotes" full><textarea id="physicalNotes" rows="3" value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Marca, estado, faltantes o novedades encontradas" /></FormField>
         </div>
         {error && <p className="error" role="alert">{error}</p>}

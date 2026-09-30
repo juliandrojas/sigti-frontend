@@ -204,6 +204,61 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .employee-peripherals span { padding: .45rem .65rem; border: 1px solid #cce1ec; border-radius: 999px; background: #eef7fc; color: #0d5f88; font-size: .88rem; font-weight: 650; }
 .employee-no-peripherals { display: block; margin-top: .8rem; }
 .request-page { max-width: 58rem; margin: 0 auto; }
+
+/* En pantallas pequeñas el acceso se presenta como una tarjeta centrada,
+   con una cabecera compacta dentro de la propia tarjeta. */
+.login-card-brand { display: none; }
+
+@media (max-width: 720px) {
+  .auth-layout {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    overflow-y: auto;
+    background: linear-gradient(145deg, #0d3b66 0%, #146c94 52%, #eaf4f9 150%);
+  }
+  .auth-layout .brand-panel { display: none; }
+  .auth-layout .login-panel {
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    background: transparent;
+  }
+  .auth-layout .login-form {
+    width: min(100%, 25rem);
+    padding: clamp(1.35rem, 6vw, 2rem);
+    gap: .65rem;
+    border: 1px solid rgb(255 255 255 / 70%);
+    border-radius: 1.15rem;
+    background: rgb(255 255 255 / 98%);
+    box-shadow: 0 1.25rem 3.5rem rgb(5 35 63 / 28%);
+  }
+  .login-card-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding-bottom: 1rem;
+    margin-bottom: .25rem;
+    border-bottom: 1px solid #dce5ee;
+    text-align: left;
+  }
+  .login-card-brand img { width: 3.3rem; height: 3.3rem; object-fit: contain; }
+  .login-card-brand div { display: grid; gap: .1rem; }
+  .login-card-brand span { color: #61708c; font-size: .68rem; font-weight: 750; letter-spacing: .08em; }
+  .login-card-brand strong { color: #0d3b66; font-size: 2.25rem; line-height: .95; letter-spacing: -.06em; }
+  .auth-layout .login-form h2 { font-size: clamp(1.55rem, 7vw, 2rem); }
+  .auth-layout .login-form input { min-height: 3rem; }
+  .auth-layout .login-form button { width: 100%; min-height: 3rem; margin-top: .9rem; }
+}
+
+@media (max-width: 380px) {
+  .auth-layout { padding: .7rem; }
+  .auth-layout .login-form { padding: 1.15rem; }
+}
 .request-page .section-heading p { margin: .3rem 0 0; color: #61708c; }
 .request-form { margin-top: 1.5rem; }
 .ticket-list { display: grid; gap: .8rem; }

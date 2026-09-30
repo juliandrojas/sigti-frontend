@@ -29,6 +29,10 @@ export function LoginForm({ onLogin }) {
     </section>
     <section className="login-panel" aria-labelledby="login-title">
       <form onSubmit={submit} className="login-form">
+        <div className="login-card-brand" aria-label="PETRO-SIGTI">
+          <img src="/petrocasinos-logo.png" alt="Logo Petrocasinos" />
+          <div><span>PETROCASINOS S.A.</span><strong>SIGTI</strong></div>
+        </div>
         <p className="eyebrow">ACCESO SEGURO</p>
         <h2 id="login-title">Bienvenido de nuevo</h2>
         <p className="muted">Ingresa con tu cuenta corporativa.</p>

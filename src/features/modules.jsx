@@ -488,7 +488,7 @@ export function SystemDashboard({ token, user }) {
   </>;
 }
 
-const areas = ['ACTIVOS FIJOS', 'BIENESTAR', 'CALIDAD', 'CAMPOS', 'COMPRAS', 'CONTABILIDAD', 'GERENCIA', 'GERENCIA ADMINISTRATIVA Y FINANCIERA', 'JURIDICA', 'MANTENIMIENTO', 'MERCADEO', 'NOMINA', 'OPERACIONES', 'RECURSOS HUMANOS', 'SALUD OCUPACIONAL', 'SENA', 'SISTEMAS'];
+const areas = ['ACTIVOS FIJOS', 'BIENESTAR', 'CALIDAD', 'CAMPOS', 'COMPRAS', 'CONTABILIDAD', 'COSTOS', 'GERENCIA', 'GERENCIA ADMINISTRATIVA Y FINANCIERA', 'JURIDICA', 'MANTENIMIENTO', 'MERCADEO', 'NOMINA', 'OPERACIONES', 'RECURSOS HUMANOS', 'SALUD OCUPACIONAL', 'SENA', 'SISTEMAS'];
 const ramOptions = ['4 GB', '8 GB', '12 GB', '16 GB', '32 GB', '64 GB'];
 const operatingSystems = ['WIN 10 Pro', 'WIN 10 Single Lenguaje', 'WIN 11 Pro', 'WIN 7 Pro', 'WIN 8.1 Single Lenguaje', 'MacOS', 'WIN 11 Single Lenguaje', 'WIN 11 Pro For Workstations'];
 const storageOptions = ['No aplica', '128 GB', '250 GB', '500 GB', '1 TB', '2 TB'];
@@ -626,7 +626,7 @@ function MaintenanceForm({ token, maintenanceId, onNavigate, modal = false, onCl
     </div>}
   </section>;
 
-  return <>{modal ? <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>{formContent}</div> : formContent}{toast && <div className="toast toast-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}</>;
+  return <>{modal ? <div className="modal-backdrop equipment-form-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>{formContent}</div> : formContent}{toast && <div className="toast toast-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}</>;
 }
 
 function createEmptyMaintenanceForm() {

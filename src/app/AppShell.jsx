@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { login } from '../api.js';
+import React, { useEffect, useRef, useState } from 'react';
+import { getTickets, login } from '../api.js';
 import { EmployeeDashboard, InventoryOverview, LoansOverview, MaintenanceRecordsOverview, RequestForm, RequestsOverview, SystemDashboard, SystemMetrics, UserRequests } from '../features/modules.jsx';
 
 export function LoginForm({ onLogin }) {
@@ -49,8 +49,15 @@ export function LoginForm({ onLogin }) {
 
 export function RoleSection({ user, token, path, onLogout, onNavigate }) {
   const isSystems = String(user.role).toUpperCase() === 'SISTEMAS';
+  const { notification, pendingCount, dismissNotification } = useSystemTicketNotifications(token, isSystems);
+
+  function openRequests() {
+    dismissNotification();
+    onNavigate('/sistemas/solicitudes');
+  }
+
   return <>
-    <Navigation isSystems={isSystems} path={path} onLogout={onLogout} onNavigate={onNavigate} />
+    <Navigation isSystems={isSystems} path={path} onLogout={onLogout} onNavigate={onNavigate} pendingCount={pendingCount} />
     <main className="dashboard">
       {isSystems
         ? path === '/sistemas/inicio' ? <SystemDashboard token={token} user={user} /> : <SystemsSection token={token} user={user} path={path} onNavigate={onNavigate} />
@@ -58,10 +65,52 @@ export function RoleSection({ user, token, path, onLogout, onNavigate }) {
           : path === '/empleados/solicitudes' ? <UserRequests token={token} />
             : <EmployeeDashboard token={token} user={user} />}
     </main>
+    {isSystems && notification && <button className="ticket-notification toast toast-success" type="button" onClick={openRequests} aria-label="Abrir nueva solicitud">
+      <span aria-hidden="true">🔔</span>
+      <span><strong>Nueva solicitud de {notification.requester_name}</strong><small>{notification.title}</small></span>
+    </button>}
   </>;
 }
 
-export function Navigation({ isSystems, path, onLogout, onNavigate }) {
+function useSystemTicketNotifications(token, isSystems) {
+  const knownTicketIds = useRef(null);
+  const [notification, setNotification] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!isSystems) return undefined;
+    let active = true;
+
+    async function checkTickets() {
+      try {
+        const tickets = await getTickets(token);
+        if (!active) return;
+        setPendingCount(tickets.filter((ticket) => ticket.status === 'open').length);
+        const currentIds = new Set(tickets.map((ticket) => String(ticket.id)));
+        if (knownTicketIds.current === null) {
+          knownTicketIds.current = currentIds;
+          return;
+        }
+        const newTicket = tickets.find((ticket) => ticket.status === 'open' && !knownTicketIds.current.has(String(ticket.id)));
+        knownTicketIds.current = currentIds;
+        if (newTicket) setNotification(newTicket);
+      } catch {
+        // La vista de solicitudes mostrará el error si la consulta no está disponible.
+      }
+    }
+
+    checkTickets();
+    const intervalId = window.setInterval(checkTickets, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [token, isSystems]);
+
+  return { notification, pendingCount, dismissNotification: () => setNotification(null) };
+}
+
+export function Navigation({ isSystems, path, onLogout, onNavigate, pendingCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const links = isSystems
     ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚑', 'Solicitudes', '/sistemas/solicitudes'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
@@ -83,7 +132,7 @@ export function Navigation({ isSystems, path, onLogout, onNavigate }) {
       </button>
       <div id="primary-navigation" className={`nav-menu ${menuOpen ? 'open' : ''}`}>
         <div className="nav-links">
-          {links.map(([icon, label, href]) => { const active = href === '/sistemas/mantenimiento' ? path.startsWith('/sistemas/mantenimiento') : href === '/sistemas/inventario' ? path.startsWith('/sistemas/inventario') : path === href; return <a className={`nav-link ${active ? 'active' : ''}`} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }} aria-current={active ? 'page' : undefined} key={label}><span aria-hidden="true">{icon}</span>{label}</a>; })}
+          {links.map(([icon, label, href]) => { const active = href === '/sistemas/mantenimiento' ? path.startsWith('/sistemas/mantenimiento') : href === '/sistemas/inventario' ? path.startsWith('/sistemas/inventario') : path === href; const isRequestsLink = href === '/sistemas/solicitudes'; return <a className={`nav-link ${active ? 'active' : ''}`} href={href} onClick={(event) => { event.preventDefault(); navigate(href); }} aria-current={active ? 'page' : undefined} key={label}><span aria-hidden="true">{icon}</span>{label}{isRequestsLink && pendingCount > 0 && <span className="nav-badge" aria-label={`${pendingCount} solicitudes abiertas`}>{pendingCount}</span>}</a>; })}
         </div>
         <div className="nav-actions"><button className="logout" type="button" onClick={() => { setMenuOpen(false); onLogout(); }}>⇥ Cerrar sesión</button></div>
       </div>

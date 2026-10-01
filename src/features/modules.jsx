@@ -674,6 +674,30 @@ function TicketCard({ ticket, showRequester = false }) {
   </article>;
 }
 
+function normalizeTicketSearch(value) {
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-CO');
+}
+
+function filterTickets(tickets, query) {
+  const normalizedQuery = normalizeTicketSearch(query).trim();
+  if (!normalizedQuery) return tickets;
+  return tickets.filter((ticket) => [
+    ticket.title,
+    ticket.description,
+    ticket.requester_name,
+    ticketStatusLabels[ticket.status] ?? ticket.status,
+    ticketPriorityLabels[ticket.priority] ?? ticket.priority
+  ].some((value) => normalizeTicketSearch(value).includes(normalizedQuery)));
+}
+
+function TicketSearch({ id, value, onChange, resultCount, totalCount }) {
+  return <div className="ticket-search">
+    <label htmlFor={id}>Buscar solicitudes</label>
+    <input id={id} type="search" value={value} onChange={(event) => onChange(event.target.value)} placeholder="Busca por tipo, usuario, estado o prioridad" />
+    {value.trim() && <small>{resultCount} de {totalCount} solicitudes</small>}
+  </div>;
+}
+
 export function RequestForm({ token, onNavigate }) {
   const [title, setTitle] = useState('Cambio de mouse');
   const [description, setDescription] = useState('');
@@ -681,6 +705,12 @@ export function RequestForm({ token, onNavigate }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (!success) return undefined;
+    const timeoutId = window.setTimeout(() => setSuccess(''), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [success]);
 
   async function submit(event) {
     event.preventDefault();
@@ -698,48 +728,57 @@ export function RequestForm({ token, onNavigate }) {
     }
   }
 
-  return <section className="maintenance-card request-page" aria-labelledby="request-title">
+  return <>
+  <section className="maintenance-card request-page" aria-labelledby="request-title">
     <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="request-title">Hacer una solicitud</h1><p>Reporta una novedad sin desplazarte al área de Sistemas.</p></div><button className="secondary-button" type="button" onClick={() => onNavigate('/empleados/solicitudes')}>Ver mis solicitudes</button></div>
     <form className="record-form request-form" onSubmit={submit}>
       <FormField label="Tipo de solicitud" id="ticketTitle"><select id="ticketTitle" value={title} onChange={(event) => setTitle(event.target.value)}><option>Cambio de mouse</option><option>Cambio de teclado</option><option>Cambio de cargador</option><option>Falla de equipo</option><option>Otra solicitud</option></select></FormField>
       <FormField label="Prioridad" id="ticketPriority"><select id="ticketPriority" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></FormField>
       <FormField label="Descripción o detalle" id="ticketDescription" full><textarea id="ticketDescription" value={description} onChange={(event) => setDescription(event.target.value)} rows="5" placeholder="Cuéntanos qué ocurrió, desde cuándo y dónde se encuentra el equipo." /></FormField>
-      <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Registrando…' : 'Enviar solicitud'}</button>{success && <p className="success-message" role="status">{success}</p>}{error && <p className="error" role="alert">{error}</p>}</div>
+      <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Registrando…' : 'Enviar solicitud'}</button>{error && <p className="error" role="alert">{error}</p>}</div>
     </form>
-  </section>;
+  </section>
+  {success && <div className="toast toast-success request-success-toast" role="status" aria-live="polite"><span aria-hidden="true">✓</span><span>{success}</span></div>}
+  </>;
 }
 
 export function UserRequests({ token }) {
   const [tickets, setTickets] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
   }, [token]);
+
+  const filteredTickets = tickets ? filterTickets(tickets, search) : [];
 
   return <section className="maintenance-card request-page" aria-labelledby="my-requests-title">
     <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="my-requests-title">Mis solicitudes</h1><p>Consulta el estado de tus reportes al área de Sistemas.</p></div></div>
     {error && <p className="error" role="alert">{error}</p>}
     {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
     {tickets?.length === 0 && <p className="muted">Aún no has registrado solicitudes.</p>}
-    {tickets?.length > 0 && <div className="ticket-list">{tickets.map((ticket) => <TicketCard ticket={ticket} key={ticket.id} />)}</div>}
+    {tickets?.length > 0 && <><TicketSearch id="user-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
   </section>;
 }
 
 export function RequestsOverview({ token }) {
   const [tickets, setTickets] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
   }, [token]);
+
+  const filteredTickets = tickets ? filterTickets(tickets, search) : [];
 
   return <section className="maintenance-card request-page" aria-labelledby="requests-title">
     <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="requests-title">Solicitudes recibidas</h1><p>Seguimiento de los reportes enviados por los empleados.</p></div></div>
     {error && <p className="error" role="alert">{error}</p>}
     {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
     {tickets?.length === 0 && <p className="muted">No hay solicitudes registradas.</p>}
-    {tickets?.length > 0 && <div className="ticket-list">{tickets.map((ticket) => <TicketCard ticket={ticket} showRequester key={ticket.id} />)}</div>}
+    {tickets?.length > 0 && <><TicketSearch id="system-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} showRequester key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
   </section>;
 }
 

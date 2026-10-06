@@ -114,7 +114,7 @@ export function Navigation({ isSystems, path, onLogout, onNavigate, pendingCount
   const [menuOpen, setMenuOpen] = useState(false);
   const links = isSystems
     ? [['⌂', 'Inicio', '/sistemas/inicio'], ['▦', 'Inventario', '/sistemas/inventario'], ['⇄', 'Préstamos y solicitudes', '/sistemas/prestamos'], ['⚑', 'Solicitudes', '/sistemas/solicitudes'], ['⚒', 'Mantenimiento', '/sistemas/mantenimiento']]
-    : [['➤', 'Hacer una solicitud', '/empleados/solicitud'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
+    : [['➤', 'Solicitar soporte de TI', '/empleados/solicitud'], ['☷', 'Mis solicitudes', '/empleados/solicitudes']];
 
   function navigate(href) {
     setMenuOpen(false);

@@ -320,6 +320,8 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .ticket-requester { color: #14213d; font-size: .9rem; }
 .ticket-card-description { padding: .7rem .8rem; border-left: 3px solid #146c94; border-radius: .35rem; background: #fff; }
 .ticket-card-description p { margin: .2rem 0 0; color: #14213d; white-space: pre-wrap; }
+.ticket-resolution { padding: .7rem .8rem; border-left: 3px solid #16794c; border-radius: .35rem; background: #effaf3; }
+.ticket-resolution p { margin: .2rem 0 0; color: #14532d; white-space: pre-wrap; }
 .ticket-card-meta { align-items: stretch; justify-content: flex-start; gap: 1.5rem; padding-top: .75rem; border-top: 1px solid #e3e8ef; }
 .ticket-card-meta > span { min-width: 7rem; color: #61708c; font-size: .84rem; }
 .ticket-card-meta strong { color: #14213d; font-weight: 650; }
@@ -327,6 +329,11 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .ticket-requester { display: block; }
 .ticket-resolve-button { margin: 0 0 0 auto; padding: .55rem .75rem; color: #fff; background: #16794c; font-size: .82rem; white-space: nowrap; }
 .ticket-resolve-button:hover { background: #12633e; }
+.resolution-modal { width: min(100%, 38rem); max-width: 38rem; }
+.resolution-modal h2 { margin-bottom: .6rem; }
+.resolution-form { display: grid; gap: .6rem; margin-top: 1.25rem; }
+.resolution-form label { font-weight: 700; }
+.resolution-form textarea { width: 100%; min-height: 8rem; resize: vertical; border: 1px solid #c7d2e4; border-radius: .65rem; padding: .8rem .9rem; color: #14213d; background: #fff; outline-color: #146c94; }
 .ticket-status { padding: .3rem .55rem; border-radius: 999px; font-size: .76rem; font-weight: 700; white-space: nowrap; }
 .ticket-status-open { color: #8a5700; background: #fff3cd; }
 .ticket-status-in_progress { color: #0d5f88; background: #dff3fb; }

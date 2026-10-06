@@ -72,10 +72,11 @@ export async function createTicket(token, data) {
   return body.ticket;
 }
 
-export async function resolveTicket(token, ticketId) {
+export async function resolveTicket(token, ticketId, data) {
   const response = await safeFetch(`${API_URL}/tickets/${encodeURIComponent(ticketId)}/resolve`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
   });
   const body = await response.json();
   if (!response.ok) throw new Error(body.message ?? 'No fue posible resolver la solicitud.');

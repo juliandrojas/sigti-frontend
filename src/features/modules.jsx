@@ -670,6 +670,7 @@ function TicketCard({ ticket, showRequester = false, onResolve, resolving = fals
     <div className="ticket-card-heading"><div><small className="ticket-field-label">Tipo de solicitud</small><strong>{ticket.title}</strong></div><span className={`ticket-status ticket-status-${ticket.status}`}>{ticketStatusLabels[ticket.status] ?? ticket.status}</span></div>
     {showRequester && <div className="ticket-card-field"><small className="ticket-field-label">Solicitante</small><span className="ticket-requester">{ticket.requester_name}</span></div>}
     <div className="ticket-card-description"><small className="ticket-field-label">Descripción</small><p>{ticket.description || 'El usuario no agregó detalles adicionales.'}</p></div>
+    {ticket.resolution_notes && <div className="ticket-resolution"><small className="ticket-field-label">Cómo se resolvió</small><p>{ticket.resolution_notes}</p></div>}
     <div className="ticket-card-meta"><span><small className="ticket-field-label">Prioridad</small><strong>{ticketPriorityLabels[ticket.priority] ?? ticket.priority}</strong></span><span><small className="ticket-field-label">Recibida</small><strong>{formatDate(ticket.created_at?.slice(0, 10))}</strong></span><span><small className="ticket-field-label">No. solicitud</small><strong>#{ticket.id}</strong></span>{onResolve && ticket.status !== 'resolved' && ticket.status !== 'closed' && <button className="ticket-resolve-button" type="button" onClick={() => onResolve(ticket)} disabled={resolving}>{resolving ? 'Resolviendo…' : 'Resolver solicitud'}</button>}</div>
   </article>;
 }
@@ -699,9 +700,9 @@ function TicketSearch({ id, value, onChange, resultCount, totalCount }) {
 }
 
 export function RequestForm({ token, onNavigate }) {
-  const [title, setTitle] = useState('Cambio de mouse');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [priority, setPriority] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -730,11 +731,11 @@ export function RequestForm({ token, onNavigate }) {
 
   return <>
   <section className="maintenance-card request-page" aria-labelledby="request-title">
-    <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="request-title">Hacer una solicitud</h1><p>Reporta una novedad sin desplazarte al área de Sistemas.</p></div><button className="secondary-button" type="button" onClick={() => onNavigate('/empleados/solicitudes')}>Ver mis solicitudes</button></div>
+    <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="request-title">Solicitar soporte de TI</h1><p>Reporta un problema o solicita ayuda con un equipo o servicio tecnológico.</p></div><button className="secondary-button" type="button" onClick={() => onNavigate('/empleados/solicitudes')}>Ver mis solicitudes</button></div>
     <form className="record-form request-form" onSubmit={submit}>
-      <FormField label="Tipo de solicitud" id="ticketTitle"><select id="ticketTitle" value={title} onChange={(event) => setTitle(event.target.value)}><option>Cambio de mouse</option><option>Cambio de teclado</option><option>Cambio de cargador</option><option>Falla de equipo</option><option>Otra solicitud</option></select></FormField>
-      <FormField label="Prioridad" id="ticketPriority"><select id="ticketPriority" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></FormField>
-      <FormField label="Descripción o detalle" id="ticketDescription" full><textarea id="ticketDescription" value={description} onChange={(event) => setDescription(event.target.value)} rows="5" placeholder="Cuéntanos qué ocurrió, desde cuándo y dónde se encuentra el equipo." /></FormField>
+      <FormField label="Título de la solicitud" id="ticketTitle"><input id="ticketTitle" value={title} onChange={(event) => setTitle(event.target.value)} minLength="5" maxLength="255" placeholder="Ej. El computador no enciende" required /></FormField>
+      <FormField label="Prioridad" id="ticketPriority"><select id="ticketPriority" value={priority} onChange={(event) => setPriority(event.target.value)} required><option value="">Selecciona una prioridad</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></FormField>
+      <FormField label="Descripción o detalle" id="ticketDescription" full><textarea id="ticketDescription" value={description} onChange={(event) => setDescription(event.target.value)} rows="5" maxLength="5000" placeholder="Describe qué ocurrió, desde cuándo y dónde se encuentra el equipo." required /></FormField>
       <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Registrando…' : 'Enviar solicitud'}</button>{error && <p className="error" role="alert">{error}</p>}</div>
     </form>
   </section>
@@ -767,17 +768,35 @@ export function RequestsOverview({ token }) {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [resolvingId, setResolvingId] = useState(null);
+  const [resolvingTicket, setResolvingTicket] = useState(null);
+  const [resolutionNotes, setResolutionNotes] = useState('');
 
   useEffect(() => {
     getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
   }, [token]);
 
-  async function handleResolve(ticket) {
-    setResolvingId(ticket.id);
+  function openResolutionModal(ticket) {
+    setResolvingTicket(ticket);
+    setResolutionNotes('');
+    setError('');
+  }
+
+  function closeResolutionModal() {
+    if (resolvingId === null) {
+      setResolvingTicket(null);
+      setResolutionNotes('');
+    }
+  }
+
+  async function handleResolve() {
+    if (!resolvingTicket) return;
+    setResolvingId(resolvingTicket.id);
     setError('');
     try {
-      const updatedTicket = await resolveTicket(token, ticket.id);
+      const updatedTicket = await resolveTicket(token, resolvingTicket.id, { resolutionNotes });
       setTickets((current) => current?.map((item) => item.id === updatedTicket.id ? { ...item, ...updatedTicket } : item) ?? current);
+      setResolvingTicket(null);
+      setResolutionNotes('');
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -787,13 +806,15 @@ export function RequestsOverview({ token }) {
 
   const filteredTickets = tickets ? filterTickets(tickets, search) : [];
 
-  return <section className="maintenance-card request-page" aria-labelledby="requests-title">
+  return <><section className="maintenance-card request-page" aria-labelledby="requests-title">
     <div className="section-heading module-heading"><div><p className="eyebrow">MESA DE AYUDA</p><h1 id="requests-title">Solicitudes recibidas</h1><p>Seguimiento de los reportes enviados por los empleados.</p></div></div>
     {error && <p className="error" role="alert">{error}</p>}
     {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
     {tickets?.length === 0 && <p className="muted">No hay solicitudes registradas.</p>}
-    {tickets?.length > 0 && <><TicketSearch id="system-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} showRequester onResolve={handleResolve} resolving={resolvingId === ticket.id} key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
-  </section>;
+    {tickets?.length > 0 && <><TicketSearch id="system-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} showRequester onResolve={openResolutionModal} resolving={resolvingId === ticket.id} key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
+  </section>
+  {resolvingTicket && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) closeResolutionModal(); }}><section className="success-modal resolution-modal" role="dialog" aria-modal="true" aria-labelledby="resolution-title"><button className="modal-close" type="button" aria-label="Cerrar" onClick={closeResolutionModal} disabled={resolvingId !== null}>×</button><p className="eyebrow">CIERRE DE SOLICITUD</p><h2 id="resolution-title">Resolver solicitud #{resolvingTicket.id}</h2><p className="muted"><strong>{resolvingTicket.title}</strong>{resolvingTicket.requester_name && <> · {resolvingTicket.requester_name}</>}</p><form className="resolution-form" onSubmit={(event) => { event.preventDefault(); handleResolve(); }}><label htmlFor="resolutionNotes">Describe cómo se resolvió</label><textarea id="resolutionNotes" value={resolutionNotes} onChange={(event) => setResolutionNotes(event.target.value)} rows="5" maxLength="5000" placeholder="Indica las acciones realizadas, el cambio aplicado o la solución entregada." required /><div className="form-actions"><button type="submit" disabled={resolvingId !== null}>{resolvingId !== null ? 'Guardando…' : 'Confirmar resolución'}</button><button className="secondary-button" type="button" onClick={closeResolutionModal} disabled={resolvingId !== null}>Cancelar</button></div></form></section></div>}
+  </>;
 }
 
 function EmployeesSection({ token, user }) {

@@ -72,6 +72,16 @@ export async function createTicket(token, data) {
   return body.ticket;
 }
 
+export async function resolveTicket(token, ticketId) {
+  const response = await safeFetch(`${API_URL}/tickets/${encodeURIComponent(ticketId)}/resolve`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible resolver la solicitud.');
+  return body.ticket;
+}
+
 export async function getSystemMetrics(token) {
   const response = await safeFetch(`${API_URL}/dashboard/systems`, {
     headers: { Authorization: `Bearer ${token}` }

@@ -4,7 +4,7 @@ import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
-import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, createTicket, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getTickets, getUserEquipment, getUsers, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
+import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, createTicket, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getTickets, getUserEquipment, getUsers, resolveTicket, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
 
 DataTable.use(DT);
 
@@ -665,12 +665,12 @@ const ticketPriorityLabels = {
   critical: 'Crítica'
 };
 
-function TicketCard({ ticket, showRequester = false }) {
+function TicketCard({ ticket, showRequester = false, onResolve, resolving = false }) {
   return <article className="ticket-card">
-    <div className="ticket-card-heading"><strong>{ticket.title}</strong><span className={`ticket-status ticket-status-${ticket.status}`}>{ticketStatusLabels[ticket.status] ?? ticket.status}</span></div>
-    {showRequester && <small className="ticket-requester">Solicitante: {ticket.requester_name}</small>}
-    {ticket.description && <p>{ticket.description}</p>}
-    <div className="ticket-card-meta"><span>Prioridad {ticketPriorityLabels[ticket.priority] ?? ticket.priority}</span><span>{formatDate(ticket.created_at?.slice(0, 10))}</span></div>
+    <div className="ticket-card-heading"><div><small className="ticket-field-label">Tipo de solicitud</small><strong>{ticket.title}</strong></div><span className={`ticket-status ticket-status-${ticket.status}`}>{ticketStatusLabels[ticket.status] ?? ticket.status}</span></div>
+    {showRequester && <div className="ticket-card-field"><small className="ticket-field-label">Solicitante</small><span className="ticket-requester">{ticket.requester_name}</span></div>}
+    <div className="ticket-card-description"><small className="ticket-field-label">Descripción</small><p>{ticket.description || 'El usuario no agregó detalles adicionales.'}</p></div>
+    <div className="ticket-card-meta"><span><small className="ticket-field-label">Prioridad</small><strong>{ticketPriorityLabels[ticket.priority] ?? ticket.priority}</strong></span><span><small className="ticket-field-label">Recibida</small><strong>{formatDate(ticket.created_at?.slice(0, 10))}</strong></span><span><small className="ticket-field-label">No. solicitud</small><strong>#{ticket.id}</strong></span>{onResolve && ticket.status !== 'resolved' && ticket.status !== 'closed' && <button className="ticket-resolve-button" type="button" onClick={() => onResolve(ticket)} disabled={resolving}>{resolving ? 'Resolviendo…' : 'Resolver solicitud'}</button>}</div>
   </article>;
 }
 
@@ -766,10 +766,24 @@ export function RequestsOverview({ token }) {
   const [tickets, setTickets] = useState(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [resolvingId, setResolvingId] = useState(null);
 
   useEffect(() => {
     getTickets(token).then(setTickets).catch((requestError) => setError(requestError.message));
   }, [token]);
+
+  async function handleResolve(ticket) {
+    setResolvingId(ticket.id);
+    setError('');
+    try {
+      const updatedTicket = await resolveTicket(token, ticket.id);
+      setTickets((current) => current?.map((item) => item.id === updatedTicket.id ? { ...item, ...updatedTicket } : item) ?? current);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setResolvingId(null);
+    }
+  }
 
   const filteredTickets = tickets ? filterTickets(tickets, search) : [];
 
@@ -778,7 +792,7 @@ export function RequestsOverview({ token }) {
     {error && <p className="error" role="alert">{error}</p>}
     {!tickets && !error && <p className="muted">Cargando solicitudes…</p>}
     {tickets?.length === 0 && <p className="muted">No hay solicitudes registradas.</p>}
-    {tickets?.length > 0 && <><TicketSearch id="system-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} showRequester key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
+    {tickets?.length > 0 && <><TicketSearch id="system-ticket-search" value={search} onChange={setSearch} resultCount={filteredTickets.length} totalCount={tickets.length} />{filteredTickets.length > 0 ? <div className="ticket-list">{filteredTickets.map((ticket) => <TicketCard ticket={ticket} showRequester onResolve={handleResolve} resolving={resolvingId === ticket.id} key={ticket.id} />)}</div> : <p className="muted">No encontramos solicitudes con esa búsqueda.</p>}</>}
   </section>;
 }
 

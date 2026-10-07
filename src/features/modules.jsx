@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import DataTable from 'datatables.net-react';
 import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
-import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, createTicket, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getTickets, getUserEquipment, getUsers, resolveTicket, returnAssignment, saveEquipmentPeripheralCounts, updateMaintenance } from '../api.js';
+import { createAssignment, createMaintenance, createMaintenanceRecord, createPeripheralStock, createTicket, getActiveAssignments, getAssignmentOptions, getEquipmentAssignment, getEquipmentPeripheralCounts, getInventoryReport, getInventoryReports, getMaintenanceHistory, getMaintenanceRecords, getMaintenances, getPeripheralStock, getPhysicalPeripheralSummary, getSites, getSystemMetrics, getTickets, getUserEquipment, getUsers, resolveTicket, returnAssignment, saveEquipmentPeripheralCounts, saveInventoryReport, updateMaintenance } from '../api.js';
 
 DataTable.use(DT);
 
@@ -24,6 +25,12 @@ const stockPeripheralLabels = {
 };
 
 const physicalPeripheralLabels = { ...peripheralLabels };
+
+const equipmentProfileFields = ['company', 'site_id', 'equipment_code', 'area', 'responsible', 'brand', 'model', 'serial_number', 'equipment_type', 'processor_model', 'ram', 'os', 'screen_size', 'antivirus'];
+
+function hasCompleteEquipmentProfile(equipment) {
+  return equipmentProfileFields.every((field) => String(equipment?.[field] ?? '').trim() !== '');
+}
 
 function normalizeAreaLabel(value) {
   const trimmed = String(value ?? '').trim().replace(/\s+/g, ' ');
@@ -472,10 +479,12 @@ export function EmployeeDashboard({ token, user }) {
 
 export function SystemDashboard({ token, user }) {
   const [metrics, setMetrics] = useState(null);
+  const [inventoryReports, setInventoryReports] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
     getSystemMetrics(token).then(setMetrics).catch((requestError) => setError(requestError.message));
+    getInventoryReports(token).then(setInventoryReports).catch(() => setInventoryReports([]));
   }, [token]);
 
   if (error) return <p className="error" role="alert">{error}</p>;
@@ -485,6 +494,7 @@ export function SystemDashboard({ token, user }) {
   return <>
     <WelcomeBanner user={user} title="Resumen de Gestión de TI" />
     <section className="dashboard-stats" aria-labelledby="dashboard-title"><div className="section-heading"><div><p className="eyebrow">INDICADORES PRINCIPALES</p><h2 id="dashboard-title">Resumen operativo</h2></div></div><div className="dashboard-stat-grid"><article className="stat-card"><span>Mantenimientos este mes</span><strong>{stats ? stats.maintenancesThisMonth : '—'}</strong><small>Intervenciones registradas</small></article><article className="stat-card"><span>Equipos de cómputo</span><strong>{stats ? stats.computerTotal : '—'}</strong><small>Portátiles, torres y todo en uno</small></article><article className="stat-card"><span>Equipos en GLPI</span><strong>{stats ? stats.glpiRegistered : '—'}</strong><small>Activos asociados</small></article><article className="stat-card"><span>Mantenimientos vencidos</span><strong>{stats ? stats.overdueMaintenances : '—'}</strong><small>Fecha programada anterior a hoy</small></article><article className="stat-card"><span>Vencen en 30 días</span><strong>{stats ? stats.dueSoonMaintenances : '—'}</strong><small>Atención y planificación inmediata</small></article><article className="stat-card"><span>Equipos al día</span><strong>{stats ? stats.upToDateMaintenances : '—'}</strong><small>Sin vencimiento en los próximos 30 días</small></article><article className="stat-card"><span>Componentes registrados</span><strong>{metrics ? metrics.inventoryItems : '—'}</strong><small>Inventario disponible en bodega</small></article><article className="stat-card"><span>Préstamos activos</span><strong>{metrics ? metrics.activeLoans : '—'}</strong><small>Equipos o componentes pendientes de devolución</small></article></div><div className="dashboard-panels"><article className="dashboard-panel"><h3>Equipos de cómputo por tipo</h3>{stats?.computerByType?.map((item) => <div className="bar-row" key={item.label}><div><span>{item.label}</span><strong>{item.value}</strong></div><div className="bar-track"><span style={{ width: item.value > 0 ? `${(item.value / maxType) * 100}%` : '0%' }} /></div></div>)}</article><article className="dashboard-panel"><h3>Equipos por empresa</h3>{stats?.equipmentByCompany?.map((item) => <div className="company-row" key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>)}</article></div></section>
+    <section className="history-card inventory-reports-card" aria-labelledby="inventory-reports-title"><div className="section-heading"><div><p className="eyebrow">LEVANTAMIENTO DE INVENTARIO</p><h2 id="inventory-reports-title">Reportes de empleados</h2><p>Información enviada por personas sin equipo asignado.</p></div></div>{inventoryReports.length === 0 ? <p className="muted">No hay reportes pendientes.</p> : <div className="inventory-report-list">{inventoryReports.map((report) => <article key={report.id}><div><strong>{report.equipmentCode}</strong><span>{report.status === 'pending' ? 'Pendiente de validación' : report.status}</span></div><p>{report.employeeName || report.username || 'Empleado no identificado'}</p><small>{Object.entries(report.peripherals ?? {}).map(([itemType, quantity]) => `${peripheralLabels[itemType] ?? itemType} × ${quantity}`).join(' · ') || 'Sin periféricos reportados'}</small></article>)}</div>}</section>
   </>;
 }
 
@@ -533,11 +543,16 @@ function MaintenanceForm({ token, maintenanceId, onNavigate, modal = false, onCl
 
   useEffect(() => {
     if (!modal) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') onClose?.();
     };
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
   }, [modal, onClose]);
 
   useEffect(() => {
@@ -626,7 +641,8 @@ function MaintenanceForm({ token, maintenanceId, onNavigate, modal = false, onCl
     </div>}
   </section>;
 
-  return <>{modal ? <div className="modal-backdrop equipment-form-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>{formContent}</div> : formContent}{toast && <div className="toast toast-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}</>;
+  const modalContent = <div className="modal-backdrop equipment-form-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>{formContent}</div>;
+  return <>{modal ? createPortal(modalContent, document.body) : formContent}{toast && <div className="toast toast-success" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{toast}</div>}</>;
 }
 
 function createEmptyMaintenanceForm() {
@@ -820,22 +836,87 @@ export function RequestsOverview({ token }) {
 function EmployeesSection({ token, user }) {
   const [equipmentData, setEquipmentData] = useState(null);
   const [error, setError] = useState('');
+  const [showInventoryWelcome, setShowInventoryWelcome] = useState(false);
+  const [inventoryReport, setInventoryReport] = useState({ equipmentCode: '', peripherals: {} });
+  const [savedInventoryReport, setSavedInventoryReport] = useState(null);
+  const [inventoryReportSaving, setInventoryReportSaving] = useState(false);
 
   useEffect(() => {
-    getUserEquipment(token, user.id)
-      .then(setEquipmentData)
+    Promise.all([getUserEquipment(token, user.id), getInventoryReport(token)])
+      .then(([equipment, report]) => {
+        setEquipmentData(equipment);
+        if (report) {
+          setSavedInventoryReport(report);
+          setInventoryReport({ equipmentCode: report.equipmentCode, peripherals: report.peripherals ?? {} });
+          return;
+        }
+        const legacyReport = window.localStorage.getItem(`sigti.inventory-report.${user.id}`);
+        if (legacyReport) {
+          try {
+            const parsed = JSON.parse(legacyReport);
+            setSavedInventoryReport(parsed);
+            setInventoryReport({ equipmentCode: parsed.equipmentCode ?? '', peripherals: parsed.peripherals ?? {} });
+          } catch {
+            window.localStorage.removeItem(`sigti.inventory-report.${user.id}`);
+          }
+        }
+      })
       .catch((requestError) => setError(requestError.message));
   }, [token, user.id]);
 
-  return <section className="history-card employee-equipment-card" aria-labelledby="my-equipment-title">
+  useEffect(() => {
+    if (!equipmentData) return;
+    const welcomeKey = `sigti.inventory-welcome.${user.id}`;
+    const noAssignedAssets = equipmentData.equipment.length === 0 && equipmentData.assignments.length === 0;
+    if (!noAssignedAssets) {
+      setSavedInventoryReport(null);
+    }
+    const reportAlreadySaved = Boolean(savedInventoryReport);
+    const shouldShow = noAssignedAssets ? !reportAlreadySaved : window.localStorage.getItem(welcomeKey) !== 'seen';
+    setShowInventoryWelcome(shouldShow);
+  }, [equipmentData, savedInventoryReport, user.id]);
+
+  function closeInventoryWelcome() {
+    window.localStorage.setItem(`sigti.inventory-welcome.${user.id}`, 'seen');
+    setShowInventoryWelcome(false);
+  }
+
+  function updateInventoryPeripheral(itemType, quantity) {
+    setInventoryReport((current) => ({
+      ...current,
+      peripherals: { ...current.peripherals, [itemType]: Math.max(0, Number(quantity) || 0) }
+    }));
+  }
+
+  async function saveInventoryReportForm(event) {
+    event.preventDefault();
+    setInventoryReportSaving(true);
+    setError('');
+    try {
+      const report = await saveInventoryReport(token, {
+        equipmentCode: inventoryReport.equipmentCode,
+        peripherals: Object.fromEntries(Object.entries(inventoryReport.peripherals).filter(([, quantity]) => quantity > 0))
+      });
+      setSavedInventoryReport(report);
+      closeInventoryWelcome();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setInventoryReportSaving(false);
+    }
+  }
+
+  const noAssignedAssets = equipmentData?.equipment.length === 0 && equipmentData.assignments.length === 0;
+
+  return <><section className="history-card employee-equipment-card" aria-labelledby="my-equipment-title">
       <div className="section-heading"><div><p className="eyebrow">INVENTARIO PERSONAL</p><h1 id="my-equipment-title">Activos asignados</h1><p>Equipos y periféricos registrados a tu nombre.</p></div></div>
       {error && <p className="error" role="alert">{error}</p>}
       {!equipmentData && !error && <p className="muted">Consultando tus equipos asignados…</p>}
-      {equipmentData && equipmentData.equipment.length === 0 && equipmentData.assignments.length === 0 && <p className="muted">No tienes equipos o periféricos asignados actualmente.</p>}
+      {equipmentData && equipmentData.equipment.length === 0 && equipmentData.assignments.length === 0 && !savedInventoryReport && <div className="employee-empty-state"><p className="muted">No tienes equipos o periféricos asignados actualmente.</p><button type="button" onClick={() => setShowInventoryWelcome(true)}>Registrar equipo y periféricos</button></div>}
+      {savedInventoryReport && equipmentData?.equipment.length === 0 && equipmentData.assignments.length === 0 && <article className="employee-self-report"><div><strong>{savedInventoryReport.equipmentCode}</strong><span>{savedInventoryReport.status === 'validated' ? 'Validado' : savedInventoryReport.status === 'rejected' ? 'Requiere corrección' : 'Reporte pendiente'}</span></div><p>Equipo reportado por el usuario</p><div className="inventory-welcome-peripherals">{Object.entries(savedInventoryReport.peripherals ?? {}).map(([itemType, quantity]) => <span key={itemType}>{peripheralLabels[itemType] ?? itemType} × {quantity}</span>)}</div><small>La información está pendiente de validación por Sistemas.</small><button type="button" className="secondary-button" onClick={() => { setInventoryReport({ equipmentCode: savedInventoryReport.equipmentCode, peripherals: savedInventoryReport.peripherals ?? {} }); setShowInventoryWelcome(true); }}>Editar información</button></article>}
       {equipmentData?.equipment.length > 0 && <div className="employee-equipment-list">{equipmentData.equipment.map((item) => <article key={item.id}>
-        <div><strong>{item.full_equipment_code ?? item.equipment_code}</strong><span>{item.equipment_type}</span></div>
-        <p>{item.brand} {item.model} · Serial {item.serial_number}</p>
-        <small>{item.company} · {item.site_name ?? 'Sede no definida'} · Área {item.area}</small>
+        <div><strong>{item.full_equipment_code ?? item.equipment_code}</strong><span>{hasCompleteEquipmentProfile(item) ? item.equipment_type : 'Pendiente de mantenimiento'}</span></div>
+        {hasCompleteEquipmentProfile(item) ? <><p>{item.brand} {item.model} · Serial {item.serial_number}</p><small>{item.company} · {item.site_name ?? 'Sede no definida'} · Área {item.area}</small></> : <small className="employee-pending-equipment">El equipo está asignado, pero sus características técnicas estarán disponibles después del mantenimiento.</small>}
         {item.peripherals?.filter((peripheral) => peripheral.quantity > 0).length > 0 ? <div className="assigned-peripherals employee-peripherals" aria-label="Periféricos asignados">{item.peripherals.filter((peripheral) => peripheral.quantity > 0).map((peripheral) => <span key={peripheral.id}>{peripheralLabels[peripheral.item_type] ?? peripheral.item_type} × {peripheral.quantity}</span>)}</div> : <small className="employee-no-peripherals">Sin periféricos registrados.</small>}
       </article>)}</div>}
       {equipmentData?.assignments.map((assignment) => <article className="employee-assignment" key={`assignment-${assignment.id}`}>
@@ -843,5 +924,39 @@ function EmployeesSection({ token, user }) {
         <p>{assignment.equipment?.full_equipment_code ?? 'Equipo asociado no encontrado'}</p>
         <small>{assignment.items.map((item) => `${peripheralLabels[item.item_type] ?? item.item_type} × ${item.quantity}`).join(' · ')}</small>
       </article>)}
-  </section>;
+  </section>
+  {showInventoryWelcome && equipmentData && <div className="modal-backdrop" role="presentation"><section className="success-modal inventory-welcome-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-welcome-title">
+    {noAssignedAssets ? <>
+      <p className="eyebrow">LEVANTAMIENTO DE INVENTARIO</p>
+      <h2 id="inventory-welcome-title">Registra tu equipo de trabajo</h2>
+      <p className="muted">No encontramos un computador asignado a tu nombre. Indica el código del equipo que tienes y los periféricos recibidos para que Sistemas pueda validar la información.</p>
+      <form className="inventory-report-form" onSubmit={saveInventoryReportForm}>
+        <div className="form-field">
+          <label htmlFor="personal-equipment-code">Código del equipo</label>
+          <input id="personal-equipment-code" value={inventoryReport.equipmentCode} onChange={(event) => setInventoryReport((current) => ({ ...current, equipmentCode: event.target.value.toUpperCase() }))} placeholder="Ejemplo: EF1234" pattern="EF[0-9]{4}" minLength="6" maxLength="6" title="Usa el formato EF1234: EF seguido de cuatro dígitos." required autoFocus />
+        </div>
+        <fieldset className="inventory-peripheral-fieldset">
+          <legend>Periféricos recibidos</legend>
+          <p className="muted">Selecciona los que tienes e indica cuántas unidades recibiste.</p>
+          <div className="inventory-peripheral-options">{Object.entries(peripheralLabels).map(([itemType, label]) => {
+            const quantity = inventoryReport.peripherals[itemType] ?? 0;
+            return <label className="inventory-peripheral-option" key={itemType}>
+              <input type="checkbox" checked={quantity > 0} onChange={(event) => updateInventoryPeripheral(itemType, event.target.checked ? 1 : 0)} />
+              <span>{label}</span>
+              <input aria-label={`Cantidad de ${label}`} type="number" min="1" value={quantity || ''} disabled={quantity === 0} onChange={(event) => updateInventoryPeripheral(itemType, event.target.value)} />
+            </label>;
+          })}</div>
+        </fieldset>
+        <p className="inventory-report-note">La información quedará pendiente de validación por el área de Sistemas.</p>
+        <div className="form-actions"><button type="submit" disabled={inventoryReportSaving}>{inventoryReportSaving ? 'Guardando…' : 'Guardar información'}</button></div>
+      </form>
+    </> : <>
+      <p className="eyebrow">VERIFICACIÓN DE INVENTARIO</p>
+      <h2 id="inventory-welcome-title">Revisa tus equipos asignados</h2>
+      <p className="muted">Esta es la información registrada a tu nombre. Verifica que el código del equipo y los periféricos coincidan con lo que tienes físicamente.</p>
+      <div className="inventory-welcome-list">{equipmentData.equipment.map((item) => <article key={item.id}><div><strong>{item.full_equipment_code ?? item.equipment_code}</strong><span>{hasCompleteEquipmentProfile(item) ? item.equipment_type : 'Pendiente de mantenimiento'}</span></div>{hasCompleteEquipmentProfile(item) ? <><p>{item.brand} {item.model} · Serial {item.serial_number}</p><small>{item.area} · {item.site_name ?? 'Sede no definida'}</small></> : <small className="employee-pending-equipment">Las características técnicas se mostrarán cuando Sistemas complete el mantenimiento.</small>}<div className="inventory-welcome-peripherals">{item.peripherals?.filter((peripheral) => peripheral.quantity > 0).map((peripheral) => <span key={peripheral.id}>{peripheralLabels[peripheral.item_type] ?? peripheral.item_type} × {peripheral.quantity}</span>)}</div></article>)}{equipmentData.assignments.map((assignment) => <article key={`assignment-${assignment.id}`}><div><strong>Kit asociado a {assignment.equipment?.full_equipment_code ?? 'equipo no encontrado'}</strong><span>Periféricos</span></div><p>{assignment.items.map((item) => `${peripheralLabels[item.item_type] ?? item.item_type} × ${item.quantity}`).join(' · ')}</p></article>)}</div>
+      <div className="form-actions"><button type="button" onClick={closeInventoryWelcome}>Entendido, revisaré mi inventario</button></div>
+    </>}
+  </section></div>}
+  </>;
 }

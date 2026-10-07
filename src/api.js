@@ -49,6 +49,35 @@ export async function getUserEquipment(token, userId) {
   return body;
 }
 
+export async function getInventoryReport(token) {
+  const response = await safeFetch(`${API_URL}/inventory-report`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible cargar tu reporte de inventario.');
+  return body.report;
+}
+
+export async function saveInventoryReport(token, data) {
+  const response = await safeFetch(`${API_URL}/inventory-report`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible guardar tu reporte de inventario.');
+  return body.report;
+}
+
+export async function getInventoryReports(token) {
+  const response = await safeFetch(`${API_URL}/inventory-reports`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? 'No fue posible cargar los reportes de inventario.');
+  return body.reports;
+}
+
 export async function getTickets(token) {
   const response = await safeFetch(`${API_URL}/tickets`, {
     headers: { Authorization: `Bearer ${token}` }

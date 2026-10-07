@@ -736,7 +736,9 @@ export function RequestForm({ token, onNavigate }) {
     setSuccess('');
     try {
       await createTicket(token, { title, description, priority });
+      setTitle('');
       setDescription('');
+      setPriority('');
       setSuccess('Solicitud registrada. El área de Sistemas revisará tu caso.');
     } catch (requestError) {
       setError(requestError.message);

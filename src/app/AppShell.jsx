@@ -50,10 +50,16 @@ export function LoginForm({ onLogin }) {
 export function RoleSection({ user, token, path, onLogout, onNavigate }) {
   const isSystems = String(user.role).toUpperCase() === 'SISTEMAS';
   const { notification, pendingCount, dismissNotification } = useSystemTicketNotifications(token, isSystems);
+  const { notification: resolvedNotification, dismissNotification: dismissResolvedNotification } = useEmployeeTicketNotifications(token, !isSystems);
 
   function openRequests() {
     dismissNotification();
     onNavigate('/sistemas/solicitudes');
+  }
+
+  function openUserRequests() {
+    dismissResolvedNotification();
+    onNavigate('/empleados/solicitudes');
   }
 
   return <>
@@ -68,6 +74,10 @@ export function RoleSection({ user, token, path, onLogout, onNavigate }) {
     {isSystems && notification && <button className="ticket-notification toast toast-success" type="button" onClick={openRequests} aria-label="Abrir nueva solicitud">
       <span aria-hidden="true">🔔</span>
       <span><strong>Nueva solicitud de {notification.requester_name}</strong><small>{notification.title}</small></span>
+    </button>}
+    {!isSystems && resolvedNotification && <button className="ticket-notification toast toast-success" type="button" onClick={openUserRequests} aria-label="Ver solicitud resuelta">
+      <span aria-hidden="true">✓</span>
+      <span><strong>Solicitud resuelta</strong><small>{resolvedNotification.title}</small></span>
     </button>}
   </>;
 }
@@ -108,6 +118,47 @@ function useSystemTicketNotifications(token, isSystems) {
   }, [token, isSystems]);
 
   return { notification, pendingCount, dismissNotification: () => setNotification(null) };
+}
+
+function useEmployeeTicketNotifications(token, isEmployee) {
+  const knownTicketStatuses = useRef(null);
+  const [notification, setNotification] = useState(null);
+
+  useEffect(() => {
+    if (!isEmployee) return undefined;
+    knownTicketStatuses.current = null;
+    let active = true;
+
+    async function checkTickets() {
+      try {
+        const tickets = await getTickets(token);
+        if (!active) return;
+        const currentStatuses = new Map(tickets.map((ticket) => [String(ticket.id), ticket.status]));
+        if (knownTicketStatuses.current === null) {
+          knownTicketStatuses.current = currentStatuses;
+          return;
+        }
+
+        const resolvedTicket = tickets.find((ticket) => (
+          ticket.status === 'resolved'
+          && knownTicketStatuses.current.get(String(ticket.id)) !== 'resolved'
+        ));
+        knownTicketStatuses.current = currentStatuses;
+        if (resolvedTicket) setNotification(resolvedTicket);
+      } catch {
+        // La vista de solicitudes mostrará el error si la consulta no está disponible.
+      }
+    }
+
+    checkTickets();
+    const intervalId = window.setInterval(checkTickets, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [token, isEmployee]);
+
+  return { notification, dismissNotification: () => setNotification(null) };
 }
 
 export function Navigation({ isSystems, path, onLogout, onNavigate, pendingCount = 0 }) {
